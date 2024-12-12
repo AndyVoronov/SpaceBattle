@@ -30,36 +30,11 @@
             padding: 0;
             overflow: hidden;
         }
-        #controls {
-            position: fixed;
-            bottom: 20px;
-            left: 0;
-            right: 0;
-            display: flex;
-            justify-content: space-between;
-            padding: 0 20px;
-        }
-        .control-btn {
-            width: 60px;
-            height: 60px;
-            background-color: rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 24px;
-            color: var(--tg-theme-text-color, black);
-            user-select: none;
-        }
     </style>
 </head>
 <body>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
     <div id="gameOver">ИГРА ОКОНЧЕНА</div>
-    <div id="controls">
-        <div class="control-btn" id="leftBtn">←</div>
-        <div class="control-btn" id="rightBtn">→</div>
-    </div>
     <script src="game.js"></script>
 </body>
 </html> 

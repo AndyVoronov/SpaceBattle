@@ -94,22 +94,35 @@ class Game {
     }
 
     setupTouchControls() {
-        const leftBtn = document.getElementById('leftBtn');
-        const rightBtn = document.getElementById('rightBtn');
-        
-        // Обработка нажатий на кнопки
-        const handleTouch = (btn, direction) => {
-            const touchStart = () => this.keys[direction] = true;
-            const touchEnd = () => this.keys[direction] = false;
-
-            btn.addEventListener('touchstart', touchStart);
-            btn.addEventListener('touchend', touchEnd);
-            btn.addEventListener('mousedown', touchStart);
-            btn.addEventListener('mouseup', touchEnd);
+        // Обработка касаний экрана
+        const handleTouch = (e) => {
+            const touch = e.touches[0];
+            const centerX = window.innerWidth / 2;
+            
+            // Сбрасываем предыдущие нажатия
+            this.keys['ArrowLeft'] = false;
+            this.keys['ArrowRight'] = false;
+            
+            // Определяем, какая половина экрана нажата
+            if (touch) {
+                if (touch.clientX < centerX) {
+                    this.keys['ArrowLeft'] = true;
+                } else {
+                    this.keys['ArrowRight'] = true;
+                }
+            }
         };
 
-        handleTouch(leftBtn, 'ArrowLeft');
-        handleTouch(rightBtn, 'ArrowRight');
+        // Обработка окончания касания
+        const handleTouchEnd = () => {
+            this.keys['ArrowLeft'] = false;
+            this.keys['ArrowRight'] = false;
+        };
+
+        // Добавляем обработчики событий касания
+        this.canvas.addEventListener('touchstart', handleTouch);
+        this.canvas.addEventListener('touchmove', handleTouch);
+        this.canvas.addEventListener('touchend', handleTouchEnd);
 
         // Добавляем автоматическую стрельбу на мобильных устройствах
         if ('ontouchstart' in window) {
