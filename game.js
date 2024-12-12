@@ -5,15 +5,20 @@ class Player {
         this.canvas = canvas;
         this.width = 50;
         this.height = 50;
-        this.x = canvas.width / 2 - this.width / 2;
-        this.y = 520;
+        this.x = 400 - this.width / 2;
+        this.y = 500;
         this.speed = 5;
         this.bullets = [];
     }
 
     draw(ctx, color) {
         ctx.fillStyle = color;
-        ctx.fillRect(this.x, this.y, this.width, this.height);
+        ctx.beginPath();
+        ctx.moveTo(this.x + this.width / 2, this.y);
+        ctx.lineTo(this.x + this.width, this.y + this.height);
+        ctx.lineTo(this.x, this.y + this.height);
+        ctx.closePath();
+        ctx.fill();
     }
 
     move(direction) {
@@ -173,6 +178,8 @@ class Game {
         this.isGameOver = false;
         this.enemies = [];
         this.player = new Player(this.canvas);
+        this.player.x = 400 - this.player.width / 2;
+        this.player.y = 500;
         document.getElementById('gameOver').style.display = 'none';
         tg.MainButton.hide();
     }
@@ -260,10 +267,7 @@ class Game {
     }
 
     draw() {
-        // Очищаем весь канвас
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        
-        // Масштабируем все координаты
         const scaleCoord = (value, isX = true) => value * (isX ? this.scaleX : this.scaleY);
 
         // Отрисовка счета и жизней
@@ -272,25 +276,35 @@ class Game {
         this.ctx.fillText(`Счет: ${this.score}`, scaleCoord(10), scaleCoord(30, false));
         this.ctx.fillText(`Жизни: ${this.lives}`, scaleCoord(10), scaleCoord(60, false));
 
-        // Отрисовка жизней в виде сердечек
+        // Отрисовка жизней в виде сердечек с увеличенным расстоянием
         for (let i = 0; i < this.lives; i++) {
             this.ctx.fillStyle = this.colors.heart;
             this.ctx.font = `${scaleCoord(24, false)}px Arial`;
             this.ctx.fillText('❤️', 
-                scaleCoord(760 - i * 30),
+                scaleCoord(760 - i * 50),
                 scaleCoord(30, false)
             );
         }
 
-        // Отрисовка игровых объектов
+        // Отрисовка игрока (треугольника)
         this.ctx.fillStyle = this.colors.player;
-        this.ctx.fillRect(
-            scaleCoord(this.player.x),
-            scaleCoord(this.player.y, false),
-            scaleCoord(this.player.width),
-            scaleCoord(this.player.height, false)
+        this.ctx.beginPath();
+        this.ctx.moveTo(
+            scaleCoord(this.player.x + this.player.width / 2),
+            scaleCoord(this.player.y, false)
         );
+        this.ctx.lineTo(
+            scaleCoord(this.player.x + this.player.width),
+            scaleCoord(this.player.y + this.player.height, false)
+        );
+        this.ctx.lineTo(
+            scaleCoord(this.player.x),
+            scaleCoord(this.player.y + this.player.height, false)
+        );
+        this.ctx.closePath();
+        this.ctx.fill();
 
+        // Отрисовка пуль
         this.player.bullets.forEach(bullet => {
             this.ctx.fillStyle = this.colors.bullet;
             this.ctx.fillRect(
@@ -301,6 +315,7 @@ class Game {
             );
         });
 
+        // Отрисовка врагов (квадратов)
         this.enemies.forEach(enemy => {
             this.ctx.fillStyle = this.colors.enemy;
             this.ctx.fillRect(
