@@ -17,11 +17,12 @@ class Player {
     }
 
     move(direction) {
-        if (direction === 'left' && this.x > 0) {
-            this.x -= this.speed;
-        }
-        if (direction === 'right' && this.x < this.canvas.width - this.width) {
-            this.x += this.speed;
+        const speed = this.speed * (direction === 'left' ? -1 : 1);
+        const newX = this.x + speed;
+        const maxX = 800 - this.width;
+        
+        if (newX >= 0 && newX <= maxX) {
+            this.x = newX;
         }
     }
 
@@ -41,7 +42,7 @@ class Enemy {
         this.canvas = canvas;
         this.width = 40;
         this.height = 40;
-        this.x = Math.random() * (canvas.width - this.width);
+        this.x = Math.random() * (800 - this.width);
         this.y = -this.height;
         this.speed = 2;
     }
@@ -52,7 +53,7 @@ class Enemy {
     }
 
     move() {
-        this.y += this.speed;
+        this.y += this.speed * (this.canvas.height / 600);
     }
 }
 
@@ -60,6 +61,7 @@ class Game {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
+        this.resizeCanvas();
         this.player = new Player(this.canvas);
         this.enemies = [];
         this.keys = {};
@@ -68,9 +70,62 @@ class Game {
         this.lives = 3;
         this.isGameOver = false;
 
+        if (tg.initDataUnsafe?.query_id) {
+            tg.ready();
+        }
         this.setupTelegram();
         this.setupControls();
+        this.setupTouchControls();
+        window.addEventListener('resize', () => this.resizeCanvas());
         this.startGame();
+    }
+
+    resizeCanvas() {
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+        
+        // Устанавливаем размеры канваса равными размерам окна
+        this.canvas.width = windowWidth;
+        this.canvas.height = windowHeight;
+        
+        // Сохраняем коэффициенты масштабирования
+        this.scaleX = windowWidth / 800;
+        this.scaleY = windowHeight / 600;
+    }
+
+    setupTouchControls() {
+        const leftBtn = document.getElementById('leftBtn');
+        const rightBtn = document.getElementById('rightBtn');
+        
+        // Обработка нажатий на кнопки
+        const handleTouch = (btn, direction) => {
+            const touchStart = () => this.keys[direction] = true;
+            const touchEnd = () => this.keys[direction] = false;
+
+            btn.addEventListener('touchstart', touchStart);
+            btn.addEventListener('touchend', touchEnd);
+            btn.addEventListener('mousedown', touchStart);
+            btn.addEventListener('mouseup', touchEnd);
+        };
+
+        handleTouch(leftBtn, 'ArrowLeft');
+        handleTouch(rightBtn, 'ArrowRight');
+
+        // Добавляем автоматическую стрельбу на мобильных устройствах
+        if ('ontouchstart' in window) {
+            setInterval(() => {
+                if (!this.isGameOver) {
+                    this.player.shoot();
+                }
+            }, 500);
+        }
+
+        // Предотвращаем скролл страницы при свайпах
+        document.addEventListener('touchmove', (e) => {
+            if (e.target.tagName === 'CANVAS') {
+                e.preventDefault();
+            }
+        }, { passive: false });
     }
 
     setupTelegram() {
@@ -185,31 +240,55 @@ class Game {
     }
 
     draw() {
+        // Очищаем весь канвас
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
+        // Масштабируем все координаты
+        const scaleCoord = (value, isX = true) => value * (isX ? this.scaleX : this.scaleY);
+
         // Отрисовка счета и жизней
         this.ctx.fillStyle = this.colors.text;
-        this.ctx.font = '20px Arial';
-        this.ctx.fillText(`Счет: ${this.score}`, 10, 30);
-        this.ctx.fillText(`Жизни: ${this.lives}`, 10, 60);
+        this.ctx.font = `${scaleCoord(20, false)}px Arial`;
+        this.ctx.fillText(`Счет: ${this.score}`, scaleCoord(10), scaleCoord(30, false));
+        this.ctx.fillText(`Жизни: ${this.lives}`, scaleCoord(10), scaleCoord(60, false));
 
         // Отрисовка жизней в виде сердечек
         for (let i = 0; i < this.lives; i++) {
             this.ctx.fillStyle = this.colors.heart;
-            this.ctx.font = '24px Arial';
-            this.ctx.fillText('❤️', this.canvas.width - 40 - (i * 30), 30);
+            this.ctx.font = `${scaleCoord(24, false)}px Arial`;
+            this.ctx.fillText('❤️', 
+                scaleCoord(760 - i * 30),
+                scaleCoord(30, false)
+            );
         }
 
-        // Отрисовка игровых объектов с новыми цветами
-        this.player.draw(this.ctx, this.colors.player);
-        
+        // Отрисовка игровых объектов
+        this.ctx.fillStyle = this.colors.player;
+        this.ctx.fillRect(
+            scaleCoord(this.player.x),
+            scaleCoord(this.player.y, false),
+            scaleCoord(this.player.width),
+            scaleCoord(this.player.height, false)
+        );
+
         this.player.bullets.forEach(bullet => {
             this.ctx.fillStyle = this.colors.bullet;
-            this.ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+            this.ctx.fillRect(
+                scaleCoord(bullet.x),
+                scaleCoord(bullet.y, false),
+                scaleCoord(bullet.width),
+                scaleCoord(bullet.height, false)
+            );
         });
 
         this.enemies.forEach(enemy => {
-            enemy.draw(this.ctx, this.colors.enemy);
+            this.ctx.fillStyle = this.colors.enemy;
+            this.ctx.fillRect(
+                scaleCoord(enemy.x),
+                scaleCoord(enemy.y, false),
+                scaleCoord(enemy.width),
+                scaleCoord(enemy.height, false)
+            );
         });
     }
 
