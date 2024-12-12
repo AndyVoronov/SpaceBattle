@@ -6,7 +6,7 @@ class Player {
         this.width = 50;
         this.height = 50;
         this.x = canvas.width / 2 - this.width / 2;
-        this.y = canvas.height - this.height - 20;
+        this.y = 520;
         this.speed = 5;
         this.bullets = [];
     }
@@ -61,6 +61,8 @@ class Game {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
+        this.scaleX = window.innerWidth / 800;
+        this.scaleY = window.innerHeight / 600;
         this.resizeCanvas();
         this.player = new Player(this.canvas);
         this.enemies = [];
@@ -88,9 +90,14 @@ class Game {
         this.canvas.width = windowWidth;
         this.canvas.height = windowHeight;
         
-        // Сохраняем коэффициенты масштабирования
+        // Обновляем коэффициенты масштабирования
         this.scaleX = windowWidth / 800;
         this.scaleY = windowHeight / 600;
+
+        // Обновляем позицию игрока при изменении размера экрана
+        if (this.player) {
+            this.player.x = (this.player.x * this.scaleX) / this.scaleX;
+        }
     }
 
     setupTouchControls() {
