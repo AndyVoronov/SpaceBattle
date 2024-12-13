@@ -43,13 +43,17 @@ class Player {
 }
 
 class Enemy {
-    constructor(canvas) {
+    constructor(canvas, type = 'basic') {
         this.canvas = canvas;
         this.width = 40;
         this.height = 40;
         this.x = Math.random() * (800 - this.width);
         this.y = -this.height;
-        this.speed = 2;
+        this.type = type;
+        const stats = game.enemyTypes[type];
+        this.speed = stats.speed;
+        this.health = stats.health;
+        this.points = stats.points;
     }
 
     draw(ctx, color) {
@@ -77,6 +81,30 @@ class Game {
         this.lives = 3;
         this.isGameOver = false;
         this.highScore = this.loadHighScore();
+        this.level = 1;
+        this.enemyTypes = {
+            basic: { speed: 2, points: 100, health: 1 },
+            fast: { speed: 4, points: 200, health: 1 },
+            tank: { speed: 1, points: 300, health: 3 }
+        };
+        this.powerUps = [];
+        this.sounds = {
+            shoot: new Audio('sounds/shoot.mp3'),
+            explosion: new Audio('sounds/explosion.mp3'),
+            powerUp: new Audio('sounds/powerup.mp3'),
+            gameOver: new Audio('sounds/gameover.mp3')
+        };
+        this.isSoundEnabled = true;
+        this.achievements = {
+            sharpshooter: { name: "Меткий стрелок", condition: "Уничтожьте 10 врагов подряд без промаха" },
+            survivor: { name: "Выживший", condition: "Наберите 1000 очков без потери жизней" },
+            speedster: { name: "Спидстер", condition: "Уничтожьте 5 быстрых врагов подряд" }
+        };
+        this.progress = {
+            consecutiveHits: 0,
+            noHitScore: 0,
+            fastEnemiesStreak: 0
+        };
 
         if (tg.initDataUnsafe?.query_id) {
             tg.ready();
@@ -227,8 +255,19 @@ class Game {
 
     startGame() {
         setInterval(() => {
-            this.enemies.push(new Enemy(this.canvas));
+            // Увеличиваем сложность с уровнем
+            const enemyCount = Math.min(3, Math.floor(this.level / 5)) + 1;
+            for (let i = 0; i < enemyCount; i++) {
+                const type = Math.random() > 0.7 ? 'fast' : 
+                            Math.random() > 0.8 ? 'tank' : 'basic';
+                this.enemies.push(new Enemy(this.canvas, type));
+            }
         }, this.enemySpawnInterval);
+
+        // Спавн бонусов
+        setInterval(() => {
+            if (Math.random() < 0.3) this.spawnPowerUp();
+        }, 10000);
 
         this.gameLoop();
     }
@@ -391,6 +430,20 @@ class Game {
                 scaleCoord(enemy.height, false)
             );
         });
+
+        // Индикатор прогресса уровня
+        this.ctx.fillStyle = this.colors.text;
+        this.ctx.fillRect(scaleCoord(10), scaleCoord(120, false), 
+            scaleCoord(200), scaleCoord(10, false));
+        this.ctx.fillStyle = this.colors.player;
+        this.ctx.fillRect(scaleCoord(10), scaleCoord(120, false), 
+            scaleCoord(200 * (this.score % 1000) / 1000), scaleCoord(10, false));
+
+        // Отображение текущего уровня
+        this.ctx.fillStyle = this.colors.text;
+        this.ctx.font = `${scaleCoord(24, false)}px Arial`;
+        this.ctx.fillText(`Уровень ${this.level}`, 
+            scaleCoord(10), scaleCoord(160, false));
     }
 
     gameLoop() {
@@ -434,6 +487,64 @@ class Game {
                 action: 'share',
                 message: message
             }));
+        }
+    }
+
+    spawnPowerUp() {
+        const types = ['shield', 'doubleShot', 'speedBoost'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        this.powerUps.push({
+            x: Math.random() * (this.canvas.width - 30),
+            y: -30,
+            type: type,
+            width: 30,
+            height: 30,
+            speed: 2
+        });
+    }
+
+    createExplosion(x, y) {
+        const particles = [];
+        for (let i = 0; i < 10; i++) {
+            particles.push({
+                x: x,
+                y: y,
+                vx: (Math.random() - 0.5) * 5,
+                vy: (Math.random() - 0.5) * 5,
+                life: 1
+            });
+        }
+        return particles;
+    }
+
+    drawEffects() {
+        // Отрисовка частиц взрыва
+        this.particles.forEach((particle, index) => {
+            particle.x += particle.vx;
+            particle.y += particle.vy;
+            particle.life -= 0.02;
+            if (particle.life <= 0) {
+                this.particles.splice(index, 1);
+                return;
+            }
+            this.ctx.fillStyle = `rgba(255, 100, 0, ${particle.life})`;
+            this.ctx.beginPath();
+            this.ctx.arc(particle.x, particle.y, 3, 0, Math.PI * 2);
+            this.ctx.fill();
+        });
+    }
+
+    playSound(soundName) {
+        if (this.isSoundEnabled && this.sounds[soundName]) {
+            this.sounds[soundName].currentTime = 0;
+            this.sounds[soundName].play();
+        }
+    }
+
+    checkAchievements() {
+        // Проверка достижений и отправка в Telegram
+        if (this.progress.consecutiveHits >= 10) {
+            this.unlockAchievement('sharpshooter');
         }
     }
 }
