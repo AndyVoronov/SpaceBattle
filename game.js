@@ -45,23 +45,23 @@ class Player {
 class Enemy {
     constructor(canvas, type = 'basic') {
         this.canvas = canvas;
-        this.width = 40;
-        this.height = 40;
+        this.width = 60;
+        this.height = 50;
         this.x = Math.random() * (800 - this.width);
         this.y = -this.height;
         switch(type) {
             case 'fast':
-                this.speed = 4;
+                this.speed = 2;
                 this.points = 200;
                 this.health = 1;
                 break;
             case 'tank':
-                this.speed = 1;
+                this.speed = 0.7;
                 this.points = 300;
                 this.health = 3;
                 break;
             default: // basic
-                this.speed = 2;
+                this.speed = 1.2;
                 this.points = 100;
                 this.health = 1;
         }
@@ -69,21 +69,45 @@ class Enemy {
     }
 
     draw(ctx, color) {
-        ctx.fillStyle = color;
+        switch(this.type) {
+            case 'fast':
+                ctx.fillStyle = '#FF5722';
+                break;
+            case 'tank':
+                ctx.fillStyle = '#673AB7';
+                break;
+            default:
+                ctx.fillStyle = '#F44336';
+        }
+
         if (this.type === 'tank') {
             ctx.fillRect(this.x, this.y, this.width, this.height);
-            ctx.fillStyle = '#888';
-            ctx.fillRect(this.x + 5, this.y + 5, this.width - 10, this.height - 10);
+            const gradient = ctx.createLinearGradient(this.x, this.y, this.x, this.y + this.height);
+            gradient.addColorStop(0, '#9575CD');
+            gradient.addColorStop(1, '#673AB7');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(this.x + 8, this.y + 5, this.width - 16, this.height - 10);
+            ctx.fillRect(this.x + this.width/2 - 5, this.y + this.height - 15, 10, 20);
         } else if (this.type === 'fast') {
+            ctx.shadowColor = '#FF5722';
+            ctx.shadowBlur = 10;
             ctx.beginPath();
             ctx.moveTo(this.x + this.width/2, this.y);
-            ctx.lineTo(this.x + this.width, this.y + this.height/2);
-            ctx.lineTo(this.x + this.width/2, this.y + this.height);
-            ctx.lineTo(this.x, this.y + this.height/2);
+            ctx.quadraticCurveTo(this.x + this.width, this.y + this.height/4, this.x + this.width, this.y + this.height/2);
+            ctx.quadraticCurveTo(this.x + this.width, this.y + this.height*3/4, this.x + this.width/2, this.y + this.height);
+            ctx.quadraticCurveTo(this.x, this.y + this.height*3/4, this.x, this.y + this.height/2);
+            ctx.quadraticCurveTo(this.x, this.y + this.height/4, this.x + this.width/2, this.y);
             ctx.closePath();
             ctx.fill();
+            ctx.shadowBlur = 0;
         } else {
+            const gradient = ctx.createLinearGradient(this.x, this.y, this.x, this.y + this.height);
+            gradient.addColorStop(0, '#FF5252');
+            gradient.addColorStop(1, '#D32F2F');
+            ctx.fillStyle = gradient;
             ctx.fillRect(this.x, this.y, this.width, this.height);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.fillRect(this.x + 10, this.y + 10, this.width - 20, 5);
         }
     }
 
@@ -109,13 +133,70 @@ class Game {
         this.highScore = this.loadHighScore();
         this.level = 1;
         this.powerUps = [];
-        this.sounds = {
-            shoot: new Audio('sounds/shoot.mp3'),
-            explosion: new Audio('sounds/explosion.mp3'),
-            powerUp: new Audio('sounds/powerup.mp3'),
-            gameOver: new Audio('sounds/gameover.mp3')
+        this.currentWeapon = 'default';
+        this.weaponTimer = null;
+        this.weaponTimeLeft = 0;
+        this.weapons = {
+            default: {
+                shoot: () => {
+                    this.player.bullets.push({
+                        x: this.player.x + this.player.width / 2,
+                        y: this.player.y,
+                        width: 5,
+                        height: 10,
+                        speed: 7,
+                        damage: 1
+                    });
+                },
+                cooldown: 500
+            },
+            doubleLaser: {
+                shoot: () => {
+                    [-10, 10].forEach(offset => {
+                        this.player.bullets.push({
+                            x: this.player.x + this.player.width / 2 + offset,
+                            y: this.player.y,
+                            width: 5,
+                            height: 10,
+                            speed: 7,
+                            damage: 1
+                        });
+                    });
+                },
+                cooldown: 400
+            },
+            spreadShot: {
+                shoot: () => {
+                    [-20, 0, 20].forEach(offset => {
+                        this.player.bullets.push({
+                            x: this.player.x + this.player.width / 2,
+                            y: this.player.y,
+                            width: 5,
+                            height: 10,
+                            speed: 7,
+                            vx: offset / 40,
+                            damage: 1
+                        });
+                    });
+                },
+                cooldown: 600
+            },
+            rapidFire: {
+                shoot: () => {
+                    this.player.bullets.push({
+                        x: this.player.x + this.player.width / 2,
+                        y: this.player.y,
+                        width: 3,
+                        height: 8,
+                        speed: 9,
+                        damage: 0.5
+                    });
+                },
+                cooldown: 200
+            }
         };
-        this.isSoundEnabled = true;
+        this.sounds = {};
+        this.isSoundEnabled = false;
         this.achievements = {
             sharpshooter: { name: "Меткий стрелок", condition: "Уничтожьте 10 врагов подряд без промаха" },
             survivor: { name: "Выживший", condition: "Наберите 1000 очков без потери жизней" },
@@ -216,8 +297,15 @@ class Game {
                 color: '#2ECC71'
             });
             tg.onEvent('themeChanged', () => this.updateColors());
-            // Предотвращаем закрытие мини-приложения
-            tg.enableClosingConfirmation();
+            // Обработка закрытия для мобильных устройств
+            if (tg.platform !== 'tdesktop' && tg.platform !== 'web') {
+                tg.BackButton.onClick(() => {
+                    if (this.isGameOver) {
+                        return true; // Разрешаем закрытие
+                    }
+                    return false; // Предотвращаем закрытие
+                });
+            }
         } catch (e) {
             console.error('Error in setupTelegram:', e);
         }
@@ -225,12 +313,11 @@ class Game {
 
     updateColors() {
         this.colors = {
-            background: tg.themeParams.bg_color || '#ffffff',
-            text: tg.themeParams.text_color || '#000000',
-            player: tg.themeParams.button_color || '#0088cc',
-            bullet: tg.themeParams.link_color || '#00ff00',
-            enemy: tg.themeParams.destructive_text_color || '#ff0000',
-            heart: tg.themeParams.destructive_text_color || '#ff0000'
+            background: tg.themeParams.bg_color || '#1A237E',
+            text: tg.themeParams.text_color || '#FFFFFF',
+            player: '#2196F3',
+            bullet: '#4CAF50',
+            heart: '#E91E63'
         };
     }
 
@@ -335,6 +422,22 @@ class Game {
             }
         });
 
+        // Обновление бонусов
+        for (let i = this.powerUps.length - 1; i >= 0; i--) {
+            const powerUp = this.powerUps[i];
+            if (powerUp instanceof PowerUp) {
+                powerUp.move();
+                if (powerUp.y > this.canvas.height) {
+                    this.powerUps.splice(i, 1);
+                }
+                // Проверка столкновения с игроком
+                if (this.isColliding(this.player, powerUp)) {
+                    this.activateWeapon(powerUp.type, powerUp.duration);
+                    this.powerUps.splice(i, 1);
+                }
+            }
+        }
+
         this.checkCollisions();
     }
 
@@ -343,11 +446,16 @@ class Game {
             this.enemies.forEach((enemy, enemyIndex) => {
                 if (this.isColliding(bullet, enemy)) {
                     this.player.bullets.splice(bulletIndex, 1);
-                    enemy.health--;
+                    enemy.health -= bullet.damage || 1;
                     if (enemy.health <= 0) {
                         this.enemies.splice(enemyIndex, 1);
                         this.score += enemy.points;
-                        this.level = Math.floor(this.score / 1000) + 1;
+                        // Шанс выпадения оружия
+                        if (Math.random() < 0.2) { // 20% шанс
+                            const types = ['doubleLaser', 'spreadShot', 'rapidFire'];
+                            const type = types[Math.floor(Math.random() * types.length)];
+                            this.powerUps.push(new PowerUp(this.canvas, type));
+                        }
                     }
                 }
             });
@@ -421,14 +529,35 @@ class Game {
 
     draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+        gradient.addColorStop(0, '#1A237E');
+        gradient.addColorStop(1, '#303F9F');
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
         const scaleCoord = (value, isX = true) => value * (isX ? this.scaleX : this.scaleY);
 
-        // Отрисовка счета и жизней
+        this.ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
+        this.ctx.shadowBlur = 5;
         this.ctx.fillStyle = this.colors.text;
-        this.ctx.font = `${scaleCoord(20, false)}px Arial`;
+        this.ctx.font = `bold ${scaleCoord(20, false)}px 'Segoe UI', Arial, sans-serif`;
         this.ctx.fillText(`Счет: ${this.score}`, scaleCoord(10), scaleCoord(30, false));
         this.ctx.fillText(`Жизни: ${this.lives}`, scaleCoord(10), scaleCoord(60, false));
         this.ctx.fillText(`Рекорд: ${this.highScore}`, scaleCoord(10), scaleCoord(90, false));
+        this.ctx.shadowBlur = 0;
+
+        // Отрисовка игрока с градиентом
+        const playerGradient = this.ctx.createLinearGradient(
+            scaleCoord(this.player.x),
+            scaleCoord(this.player.y, false),
+            scaleCoord(this.player.x + this.player.width),
+            scaleCoord(this.player.y + this.player.height, false)
+        );
+        playerGradient.addColorStop(0, '#2196F3');
+        playerGradient.addColorStop(1, '#1976D2');
+        this.ctx.fillStyle = playerGradient;
+        this.ctx.shadowColor = '#64B5F6';
+        this.ctx.shadowBlur = 15;
 
         // Отрисовка жизней в виде сердечек с увеличенным расстоянием
         for (let i = 0; i < this.lives; i++) {
@@ -480,12 +609,22 @@ class Game {
             );
         });
 
-        // Индикатор прогресса уровня
-        this.ctx.fillStyle = this.colors.text;
-        this.ctx.fillRect(scaleCoord(10), scaleCoord(120, false), 
+        // Отрисовка бонусов
+        this.powerUps.forEach(powerUp => powerUp.draw(this.ctx));
+
+        // Улучшенный индикатор прогресса
+        this.ctx.shadowBlur = 0;
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        this.ctx.fillRect(scaleCoord(10), scaleCoord(120, false),
             scaleCoord(200), scaleCoord(10, false));
-        this.ctx.fillStyle = this.colors.player;
-        this.ctx.fillRect(scaleCoord(10), scaleCoord(120, false), 
+        const progressGradient = this.ctx.createLinearGradient(
+            scaleCoord(10), 0,
+            scaleCoord(210), 0
+        );
+        progressGradient.addColorStop(0, '#4CAF50');
+        progressGradient.addColorStop(1, '#81C784');
+        this.ctx.fillStyle = progressGradient;
+        this.ctx.fillRect(scaleCoord(10), scaleCoord(120, false),
             scaleCoord(200 * (this.score % 1000) / 1000), scaleCoord(10, false));
 
         // Отображение текущего уровня
@@ -493,6 +632,15 @@ class Game {
         this.ctx.font = `${scaleCoord(24, false)}px Arial`;
         this.ctx.fillText(`Уровень ${this.level}`, 
             scaleCoord(10), scaleCoord(160, false));
+
+        // Отрисовка таймера оружия
+        if (this.weaponTimeLeft > 0) {
+            const timeLeft = Math.ceil(this.weaponTimeLeft / 1000);
+            this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.font = `${scaleCoord(16, false)}px 'Segoe UI'`;
+            this.ctx.fillText(`${this.currentWeapon}: ${timeLeft}s`, 
+                scaleCoord(10), scaleCoord(180, false));
+        }
     }
 
     gameLoop() {
@@ -540,16 +688,9 @@ class Game {
     }
 
     spawnPowerUp() {
-        const types = ['shield', 'doubleShot', 'speedBoost'];
+        const types = ['doubleLaser', 'spreadShot', 'rapidFire'];
         const type = types[Math.floor(Math.random() * types.length)];
-        this.powerUps.push({
-            x: Math.random() * (this.canvas.width - 30),
-            y: -30,
-            type: type,
-            width: 30,
-            height: 30,
-            speed: 2
-        });
+        this.powerUps.push(new PowerUp(this.canvas, type));
     }
 
     createExplosion(x, y) {
@@ -595,6 +736,67 @@ class Game {
         if (this.progress.consecutiveHits >= 10) {
             this.unlockAchievement('sharpshooter');
         }
+    }
+
+    activateWeapon(type, duration) {
+        if (this.weaponTimer) {
+            clearInterval(this.weaponTimer);
+        }
+        this.currentWeapon = type;
+        this.weaponTimeLeft = duration;
+        
+        this.weaponTimer = setInterval(() => {
+            this.weaponTimeLeft -= 100;
+            if (this.weaponTimeLeft <= 0) {
+                clearInterval(this.weaponTimer);
+                this.currentWeapon = 'default';
+            }
+        }, 100);
+    }
+}
+
+class PowerUp {
+    constructor(canvas, type) {
+        this.canvas = canvas;
+        this.width = 30;
+        this.height = 30;
+        this.x = Math.random() * (800 - this.width);
+        this.y = -this.height;
+        this.speed = 2;
+        this.type = type;
+        this.duration = 10000; // 10 секунд для всех бонусов
+    }
+
+    draw(ctx) {
+        ctx.shadowBlur = 15;
+        switch(this.type) {
+            case 'doubleLaser':
+                ctx.shadowColor = '#FF1744';
+                ctx.fillStyle = '#FF1744';
+                break;
+            case 'spreadShot':
+                ctx.shadowColor = '#AA00FF';
+                ctx.fillStyle = '#AA00FF';
+                break;
+            case 'rapidFire':
+                ctx.shadowColor = '#00E5FF';
+                ctx.fillStyle = '#00E5FF';
+                break;
+        }
+        
+        // Рисуем иконку оружия
+        ctx.beginPath();
+        ctx.moveTo(this.x + this.width/2, this.y);
+        ctx.lineTo(this.x + this.width, this.y + this.height/2);
+        ctx.lineTo(this.x + this.width/2, this.y + this.height);
+        ctx.lineTo(this.x, this.y + this.height/2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.shadowBlur = 0;
+    }
+
+    move() {
+        this.y += this.speed * (this.canvas.height / 600);
     }
 }
 
