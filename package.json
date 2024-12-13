@@ -1,0 +1,18 @@
+{
+  "name": "telegram-farm-game",
+  "version": "1.0.0",
+  "description": "Farming game for Telegram Mini Apps",
+  "scripts": {
+    "start": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "gh-pages -d dist"
+  },
+  "dependencies": {
+    "telegram-web-app": "^1.0.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "gh-pages": "^6.0.0"
+  }
+} 
