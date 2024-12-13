@@ -155,11 +155,15 @@ class Game {
     }
 
     setupTelegram() {
-        tg.ready();
-        this.updateColors();
-        tg.MainButton.setText('Играть заново');
-        tg.MainButton.onClick(() => this.restartGame());
-        tg.onEvent('themeChanged', () => this.updateColors());
+        try {
+            tg.ready();
+            this.updateColors();
+            // Скрываем кнопку в начале игры
+            tg.MainButton.hide();
+            tg.onEvent('themeChanged', () => this.updateColors());
+        } catch (e) {
+            console.error('Error in setupTelegram:', e);
+        }
     }
 
     updateColors() {
@@ -174,17 +178,20 @@ class Game {
     }
 
     restartGame() {
-        this.score = 0;
-        this.lives = 3;
-        this.isGameOver = false;
-        this.enemies = [];
-        this.player = new Player(this.canvas);
-        this.player.x = 400 - this.player.width / 2;
-        this.player.y = 500;
-        document.getElementById('gameOver').style.display = 'none';
-        document.getElementById('leaderboard').style.display = 'none';
-        tg.MainButton.hide();
-        this.gameLoop();
+        try {
+            this.score = 0;
+            this.lives = 3;
+            this.isGameOver = false;
+            this.enemies = [];
+            this.player = new Player(this.canvas);
+            this.player.x = 400 - this.player.width / 2;
+            this.player.y = 500;
+            document.getElementById('gameOver').style.display = 'none';
+            document.getElementById('leaderboard').style.display = 'none';
+            tg.MainButton.hide();
+        } catch (e) {
+            console.error('Error in restartGame:', e);
+        }
     }
 
     setupControls() {
@@ -258,35 +265,35 @@ class Game {
 
     gameOver() {
         this.isGameOver = true;
-        this.saveHighScore();
-        document.getElementById('gameOver').style.display = 'block';
-        
-        // Отправляем счет и запрашиваем таблицу лидеров
-        if (tg.initDataUnsafe?.user) {
-            const userData = {
-                username: tg.initDataUnsafe.user.username,
-                score: this.score,
-                timestamp: Date.now()
-            };
-            tg.sendData(JSON.stringify({
-                action: 'newHighScore',
-                data: userData
-            }));
+        try {
+            this.saveHighScore();
+            document.getElementById('gameOver').style.display = 'block';
+            
+            // Отправляем счет и запрашиваем таблицу лидеров
+            if (tg.initDataUnsafe?.user) {
+                const userData = {
+                    username: tg.initDataUnsafe.user.username,
+                    score: this.score,
+                    timestamp: Date.now()
+                };
+                tg.sendData(JSON.stringify({
+                    action: 'newHighScore',
+                    data: userData
+                }));
+            }
+            
+            this.showLeaderboard();
+            tg.MainButton.show();
+            tg.MainButton.setText('Играть заново');
+            
+            // Устанавливаем обработчик для кнопки
+            tg.MainButton.onClick(() => {
+                this.restartGame();
+                this.gameLoop();
+            });
+        } catch (e) {
+            console.error('Error in gameOver:', e);
         }
-        
-        this.showLeaderboard();
-        tg.MainButton.show();
-        tg.MainButton.setText('Играть заново');
-        
-        // Сохраняем текущий обработчик
-        const currentHandler = () => {
-            this.restartGame();
-            // Удаляем обработчик после использования
-            tg.MainButton.offClick(currentHandler);
-        };
-        
-        // Устанавливаем новый обработчик
-        tg.MainButton.onClick(currentHandler);
     }
 
     showLeaderboard() {
