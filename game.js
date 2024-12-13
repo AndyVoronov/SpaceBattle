@@ -189,6 +189,10 @@ class Game {
             document.getElementById('gameOver').style.display = 'none';
             document.getElementById('leaderboard').style.display = 'none';
             tg.MainButton.hide();
+            // Очищаем состояние клавиш
+            this.keys = {};
+            // Перезапускаем игровой цикл
+            requestAnimationFrame(() => this.gameLoop());
         } catch (e) {
             console.error('Error in restartGame:', e);
         }
@@ -196,6 +200,13 @@ class Game {
 
     setupControls() {
         document.addEventListener('keydown', (e) => {
+            // Добавляем поддержку клавиш A и D
+            if (e.key.toLowerCase() === 'a') {
+                this.keys['ArrowLeft'] = true;
+            }
+            if (e.key.toLowerCase() === 'd') {
+                this.keys['ArrowRight'] = true;
+            }
             this.keys[e.key] = true;
             if (e.key === ' ') {
                 this.player.shoot();
@@ -203,6 +214,13 @@ class Game {
         });
 
         document.addEventListener('keyup', (e) => {
+            // Добавляем поддержку клавиш A и D
+            if (e.key.toLowerCase() === 'a') {
+                this.keys['ArrowLeft'] = false;
+            }
+            if (e.key.toLowerCase() === 'd') {
+                this.keys['ArrowRight'] = false;
+            }
             this.keys[e.key] = false;
         });
     }
@@ -286,11 +304,14 @@ class Game {
             tg.MainButton.show();
             tg.MainButton.setText('Играть заново');
             
-            // Устанавливаем обработчик для кнопки
-            tg.MainButton.onClick(() => {
+            // Устанавливаем обработчик для кнопки с сохранением контекста
+            const restartHandler = () => {
                 this.restartGame();
                 this.gameLoop();
-            });
+                // Удаляем обработчик после использования
+                tg.MainButton.offClick(restartHandler);
+            };
+            tg.MainButton.onClick(restartHandler);
         } catch (e) {
             console.error('Error in gameOver:', e);
         }
