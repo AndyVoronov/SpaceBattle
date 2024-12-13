@@ -76,6 +76,7 @@ class Game {
         this.score = 0;
         this.lives = 3;
         this.isGameOver = false;
+        this.highScore = this.loadHighScore();
 
         if (tg.initDataUnsafe?.query_id) {
             tg.ready();
@@ -156,9 +157,11 @@ class Game {
     setupTelegram() {
         tg.ready();
         this.updateColors();
-        tg.MainButton.setText('Играть снова');
-        tg.MainButton.onClick(() => this.restartGame());
+        tg.MainButton.setText('Поделиться результатом');
+        tg.MainButton.onClick(() => this.shareScore());
         tg.onEvent('themeChanged', () => this.updateColors());
+        tg.BackButton.show();
+        tg.BackButton.onClick(() => this.restartGame());
     }
 
     updateColors() {
@@ -255,6 +258,7 @@ class Game {
 
     gameOver() {
         this.isGameOver = true;
+        this.saveHighScore();
         document.getElementById('gameOver').style.display = 'block';
         tg.MainButton.show();
         
@@ -275,6 +279,7 @@ class Game {
         this.ctx.font = `${scaleCoord(20, false)}px Arial`;
         this.ctx.fillText(`Счет: ${this.score}`, scaleCoord(10), scaleCoord(30, false));
         this.ctx.fillText(`Жизни: ${this.lives}`, scaleCoord(10), scaleCoord(60, false));
+        this.ctx.fillText(`Рекорд: ${this.highScore}`, scaleCoord(10), scaleCoord(90, false));
 
         // Отрисовка жизней в виде сердечек с увеличенным расстоянием
         for (let i = 0; i < this.lives; i++) {
@@ -331,6 +336,44 @@ class Game {
         this.update();
         this.draw();
         requestAnimationFrame(() => this.gameLoop());
+    }
+
+    loadHighScore() {
+        const stored = localStorage.getItem('highScore');
+        return stored ? parseInt(stored) : 0;
+    }
+
+    saveHighScore() {
+        if (this.score > this.highScore) {
+            this.highScore = this.score;
+            localStorage.setItem('highScore', this.score);
+            
+            // Отправляем новый рекорд в Telegram
+            if (tg.initDataUnsafe?.user) {
+                const userData = {
+                    username: tg.initDataUnsafe.user.username,
+                    score: this.score,
+                    timestamp: Date.now()
+                };
+                tg.sendData(JSON.stringify({
+                    action: 'newHighScore',
+                    data: userData
+                }));
+            }
+        }
+    }
+
+    shareScore() {
+        const message = `🚀 Я набрал ${this.score} очков в Space Battle!${
+            this.score === this.highScore ? ' Это мой новый рекорд! 🏆' : ''
+        }`;
+        
+        if (tg.initDataUnsafe?.query_id) {
+            tg.sendData(JSON.stringify({
+                action: 'share',
+                message: message
+            }));
+        }
     }
 }
 

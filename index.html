@@ -30,11 +30,31 @@
             padding: 0;
             overflow: hidden;
         }
+        #leaderboard {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: var(--tg-theme-bg-color, white);
+            border: 2px solid var(--tg-theme-button-color, blue);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .leaderboard-item {
+            margin: 10px 0;
+            color: var(--tg-theme-text-color, black);
+        }
     </style>
 </head>
 <body>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
     <div id="gameOver">ИГРА ОКОНЧЕНА</div>
+    <div id="leaderboard">
+        <h2>Таблица лидеров</h2>
+        <div id="leaderboard-items"></div>
+    </div>
     <script src="game.js"></script>
 </body>
 </html> 
