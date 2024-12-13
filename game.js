@@ -443,13 +443,20 @@ class Game {
     checkCollisions() {
         this.player.bullets.forEach((bullet, bulletIndex) => {
             // Проверка столкновения пуль с бонусами
-            this.powerUps.forEach((powerUp, powerUpIndex) => {
-                if (this.isColliding(bullet, powerUp)) {
+            for (let i = this.powerUps.length - 1; i >= 0; i--) {
+                const powerUp = this.powerUps[i];
+                if (bullet.x < powerUp.x + powerUp.width &&
+                    bullet.x + bullet.width > powerUp.x &&
+                    bullet.y < powerUp.y + powerUp.height &&
+                    bullet.y + bullet.height > powerUp.y) {
+                    // Удаляем пулю и бонус
                     this.player.bullets.splice(bulletIndex, 1);
+                    this.powerUps.splice(i, 1);
+                    // Активируем оружие
                     this.activateWeapon(powerUp.type, powerUp.duration);
-                    this.powerUps.splice(powerUpIndex, 1);
+                    break; // Прерываем цикл, так как пуля уже удалена
                 }
-            });
+            }
 
             this.enemies.forEach((enemy, enemyIndex) => {
                 if (this.isColliding(bullet, enemy)) {
@@ -471,6 +478,9 @@ class Game {
     }
 
     isColliding(rect1, rect2) {
+        // Проверяем, что оба объекта существуют и имеют необходимые свойства
+        if (!rect1 || !rect2 || !rect1.x || !rect2.x) return false;
+        
         return rect1.x < rect2.x + rect2.width &&
                rect1.x + rect1.width > rect2.x &&
                rect1.y < rect2.y + rect2.height &&
