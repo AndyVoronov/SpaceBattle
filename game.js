@@ -210,9 +210,18 @@ class Game {
         try {
             tg.ready();
             this.updateColors();
-            // Скрываем кнопку в начале игры
             tg.MainButton.hide();
+            tg.MainButton.setParams({
+                text_color: '#FFFFFF',
+                color: '#2ECC71'
+            });
             tg.onEvent('themeChanged', () => this.updateColors());
+            tg.BackButton.onClick(() => {
+                if (this.isGameOver) {
+                    this.restartGame();
+                }
+                return false;
+            });
         } catch (e) {
             console.error('Error in setupTelegram:', e);
         }
@@ -246,7 +255,11 @@ class Game {
             document.getElementById('leaderboard').style.display = 'none';
             tg.MainButton.hide();
             this.keys = {};
-            this.startGame();
+            try {
+                this.startGame();
+            } catch (e) {
+                console.error('Error starting game:', e);
+            }
         } catch (e) {
             console.error('Error in restartGame:', e);
         }
@@ -376,14 +389,15 @@ class Game {
             tg.MainButton.show();
             tg.MainButton.setText('Играть заново');
             
-            // Устанавливаем обработчик для кнопки с сохранением контекста
-            const restartHandler = () => {
-                this.restartGame();
-                this.gameLoop();
-                // Удаляем обработчик после использования
-                tg.MainButton.offClick(restartHandler);
-            };
-            tg.MainButton.onClick(restartHandler);
+            tg.MainButton.offClick();
+            
+            tg.MainButton.onClick(() => {
+                try {
+                    this.restartGame();
+                } catch (e) {
+                    console.error('Error restarting game:', e);
+                }
+            });
         } catch (e) {
             console.error('Error in gameOver:', e);
         }
