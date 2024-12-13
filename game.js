@@ -184,6 +184,7 @@ class Game {
         document.getElementById('gameOver').style.display = 'none';
         document.getElementById('leaderboard').style.display = 'none';
         tg.MainButton.hide();
+        this.gameLoop();
     }
 
     setupControls() {
@@ -275,6 +276,17 @@ class Game {
         
         this.showLeaderboard();
         tg.MainButton.show();
+        tg.MainButton.setText('Играть заново');
+        
+        // Сохраняем текущий обработчик
+        const currentHandler = () => {
+            this.restartGame();
+            // Удаляем обработчик после использования
+            tg.MainButton.offClick(currentHandler);
+        };
+        
+        // Устанавливаем новый обработчик
+        tg.MainButton.onClick(currentHandler);
     }
 
     showLeaderboard() {

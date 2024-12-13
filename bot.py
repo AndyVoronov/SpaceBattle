@@ -58,7 +58,7 @@ def handle_webapp_data(update, context):
 def start(update, context):
     keyboard = {
         "inline_keyboard": [[
-            {"text": "🎮 Играть", "web_app": {"url": "https://andyvoronov.github.io/SpaceBattle/"}}
+            {"text": "🎮 Играть", "web_app": {"url": "https://t.me/SpaceBattleRussianBot/SpaceBattleApp"}}
         ]]
     }
     update.message.reply_text(
@@ -75,7 +75,8 @@ def top(update, context):
 
 def main():
     init_db()
-    updater = Updater("7893734041:AAGPXf4DRmZ--HLnN77VTPCpvC6oiyKsjWM", use_context=True)
+    TOKEN = "7893734041:AAGPXf4DRmZ--HLnN77VTPCpvC6oiyKsjWM"
+    updater = Updater(TOKEN, use_context=True)
     dp = updater.dispatcher
     
     dp.add_handler(CommandHandler("start", start))
@@ -83,6 +84,7 @@ def main():
     dp.add_handler(MessageHandler(Filters.web_app_data, handle_webapp_data))
     
     print("Bot started...")
+    print(f"Bot username: @{updater.bot.username}")
     updater.start_polling()
     updater.idle()
 
