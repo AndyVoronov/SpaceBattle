@@ -216,12 +216,8 @@ class Game {
                 color: '#2ECC71'
             });
             tg.onEvent('themeChanged', () => this.updateColors());
-            tg.BackButton.onClick(() => {
-                if (this.isGameOver) {
-                    this.restartGame();
-                }
-                return false;
-            });
+            // Предотвращаем закрытие мини-приложения
+            tg.enableClosingConfirmation();
         } catch (e) {
             console.error('Error in setupTelegram:', e);
         }
@@ -253,7 +249,6 @@ class Game {
             this.player.y = 500;
             document.getElementById('gameOver').style.display = 'none';
             document.getElementById('leaderboard').style.display = 'none';
-            tg.MainButton.hide();
             this.keys = {};
             try {
                 this.startGame();
@@ -389,11 +384,18 @@ class Game {
             tg.MainButton.show();
             tg.MainButton.setText('Играть заново');
             
-            tg.MainButton.offClick();
+            // Очищаем все обработчики и устанавливаем новый
+            const handlers = tg.MainButton.events.onClick || [];
+            handlers.forEach(handler => tg.MainButton.offClick(handler));
             
             tg.MainButton.onClick(() => {
                 try {
+                    // Сбрасываем состояние игры
                     this.restartGame();
+                    // Запускаем новую игру
+                    this.gameLoop();
+                    // Скрываем кнопку после рестарта
+                    tg.MainButton.hide();
                 } catch (e) {
                     console.error('Error restarting game:', e);
                 }
