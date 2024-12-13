@@ -27,31 +27,44 @@ def get_top_scores(limit=10):
     return results
 
 def handle_webapp_data(update, context):
-    data = json.loads(update.message.web_app_data.data)
-    
-    if data['action'] == 'newHighScore':
-        user_data = data['data']
-        save_score(user_data['username'], user_data['score'], user_data['timestamp'])
-        update.message.reply_text(f"Новый рекорд: {user_data['score']} очков!")
+    try:
+        if not update.message.web_app_data:
+            return
         
-    elif data['action'] == 'getLeaderboard':
-        scores = get_top_scores()
-        leaderboard = "🏆 Таблица лидеров:\n\n"
-        for i, (username, score) in enumerate(scores, 1):
-            leaderboard += f"{i}. {username}: {score} очков\n"
-        update.message.reply_text(leaderboard)
-        update.message.reply_text("Нажмите 'Играть заново' чтобы попробовать еще раз!")
+        data = json.loads(update.message.web_app_data.data)
         
-    elif data['action'] == 'share':
-        update.message.reply_text(data['message'])
-        scores = get_top_scores()
-        leaderboard = "🏆 Таблица лидеров:\n\n"
-        for i, (username, score) in enumerate(scores, 1):
-            leaderboard += f"{i}. {username}: {score} очков\n"
-        update.message.reply_text(leaderboard)
+        if data['action'] == 'newHighScore':
+            user_data = data['data']
+            save_score(user_data['username'], user_data['score'], user_data['timestamp'])
+            update.message.reply_text(f"Новый рекорд: {user_data['score']} очков!")
+            
+            # Сразу отправляем таблицу лидеров
+            scores = get_top_scores()
+            leaderboard = "🏆 Таблица лидеров:\n\n"
+            for i, (username, score) in enumerate(scores, 1):
+                leaderboard += f"{i}. {username}: {score} очков\n"
+            update.message.reply_text(leaderboard)
+            
+        elif data['action'] == 'getLeaderboard':
+            scores = get_top_scores()
+            leaderboard = "🏆 Таблица лидеров:\n\n"
+            for i, (username, score) in enumerate(scores, 1):
+                leaderboard += f"{i}. {username}: {score} очков\n"
+            update.message.reply_text(leaderboard)
+            update.message.reply_text("Нажмите 'Играть заново' чтобы попробовать еще раз!")
+    except Exception as e:
+        print(f"Error handling webapp data: {e}")
 
 def start(update, context):
-    update.message.reply_text('Добро пожаловать в Space Battle! Нажмите кнопку "Играть", чтобы начать.')
+    keyboard = {
+        "inline_keyboard": [[
+            {"text": "🎮 Играть", "web_app": {"url": "https://andyvoronov.github.io/SpaceBattle/"}}
+        ]]
+    }
+    update.message.reply_text(
+        'Добро пожаловать в Space Battle! Нажмите кнопку "Играть", чтобы начать.',
+        reply_markup=json.dumps(keyboard)
+    )
 
 def top(update, context):
     scores = get_top_scores()
@@ -69,6 +82,7 @@ def main():
     dp.add_handler(CommandHandler("top", top))
     dp.add_handler(MessageHandler(Filters.web_app_data, handle_webapp_data))
     
+    print("Bot started...")
     updater.start_polling()
     updater.idle()
 

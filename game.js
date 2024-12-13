@@ -157,11 +157,9 @@ class Game {
     setupTelegram() {
         tg.ready();
         this.updateColors();
-        tg.MainButton.setText('Поделиться результатом');
-        tg.MainButton.onClick(() => this.shareScore());
+        tg.MainButton.setText('Играть заново');
+        tg.MainButton.onClick(() => this.restartGame());
         tg.onEvent('themeChanged', () => this.updateColors());
-        tg.BackButton.show();
-        tg.BackButton.onClick(() => this.restartGame());
     }
 
     updateColors() {
@@ -261,10 +259,22 @@ class Game {
         this.isGameOver = true;
         this.saveHighScore();
         document.getElementById('gameOver').style.display = 'block';
+        
+        // Отправляем счет и запрашиваем таблицу лидеров
+        if (tg.initDataUnsafe?.user) {
+            const userData = {
+                username: tg.initDataUnsafe.user.username,
+                score: this.score,
+                timestamp: Date.now()
+            };
+            tg.sendData(JSON.stringify({
+                action: 'newHighScore',
+                data: userData
+            }));
+        }
+        
         this.showLeaderboard();
         tg.MainButton.show();
-        tg.MainButton.setText('Играть заново');
-        tg.MainButton.onClick(() => this.restartGame());
     }
 
     showLeaderboard() {
@@ -272,7 +282,7 @@ class Game {
         const leaderboardItems = document.getElementById('leaderboard-items');
         leaderboardItems.innerHTML = ''; // Очищаем предыдущую таблицу
         
-        if (tg.initDataUnsafe?.query_id) {
+        if (tg.initDataUnsafe?.user) {
             tg.sendData(JSON.stringify({
                 action: 'getLeaderboard'
             }));
