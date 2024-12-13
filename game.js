@@ -102,7 +102,7 @@ class Game {
         this.player = new Player(this.canvas);
         this.enemies = [];
         this.keys = {};
-        this.enemySpawnInterval = 2000;
+        this.enemySpawnTimer = null;
         this.score = 0;
         this.lives = 3;
         this.isGameOver = false;
@@ -141,15 +141,18 @@ class Game {
         const windowWidth = window.innerWidth;
         const windowHeight = window.innerHeight;
         
-        // Устанавливаем размеры канваса равными размерам окна
         this.canvas.width = windowWidth;
         this.canvas.height = windowHeight;
         
-        // Обновляем коэффициенты масштабирования
         this.scaleX = windowWidth / 800;
         this.scaleY = windowHeight / 600;
 
-        // Обновляем позицию игрока при изменении размера экрана
+        if (this.enemies) {
+            this.enemies.forEach(enemy => {
+                enemy.canvas = this.canvas;
+            });
+        }
+
         if (this.player) {
             this.player.x = (this.player.x * this.scaleX) / this.scaleX;
         }
@@ -228,20 +231,22 @@ class Game {
 
     restartGame() {
         try {
+            if (this.enemySpawnTimer) {
+                clearInterval(this.enemySpawnTimer);
+            }
             this.score = 0;
             this.lives = 3;
             this.isGameOver = false;
             this.enemies = [];
+            this.level = 1;
             this.player = new Player(this.canvas);
             this.player.x = 400 - this.player.width / 2;
             this.player.y = 500;
             document.getElementById('gameOver').style.display = 'none';
             document.getElementById('leaderboard').style.display = 'none';
             tg.MainButton.hide();
-            // Очищаем состояние клавиш
             this.keys = {};
-            // Перезапускаем игровой цикл
-            requestAnimationFrame(() => this.gameLoop());
+            this.startGame();
         } catch (e) {
             console.error('Error in restartGame:', e);
         }
@@ -275,15 +280,18 @@ class Game {
     }
 
     startGame() {
-        setInterval(() => {
-            // Увеличиваем сложность с уровнем
+        if (this.enemySpawnTimer) {
+            clearInterval(this.enemySpawnTimer);
+        }
+        
+        this.enemySpawnTimer = setInterval(() => {
             const enemyCount = Math.min(3, Math.floor(this.level / 5)) + 1;
             for (let i = 0; i < enemyCount; i++) {
                 const type = Math.random() > 0.7 ? 'fast' : 
                             Math.random() > 0.8 ? 'tank' : 'basic';
                 this.enemies.push(new Enemy(this.canvas, type));
             }
-        }, this.enemySpawnInterval);
+        }, 2000);
 
         // Спавн бонусов
         setInterval(() => {
@@ -411,7 +419,7 @@ class Game {
             this.ctx.fillStyle = this.colors.heart;
             this.ctx.font = `${scaleCoord(24, false)}px Arial`;
             this.ctx.fillText('❤️', 
-                scaleCoord(760 - i * 50),
+                scaleCoord(700 - i * 40),
                 scaleCoord(30, false)
             );
         }
