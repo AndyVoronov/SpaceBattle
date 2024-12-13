@@ -207,6 +207,12 @@ class Game {
             noHitScore: 0,
             fastEnemiesStreak: 0
         };
+        this.weaponNames = {
+            'default': 'Обычный лазер',
+            'doubleLaser': 'Двойной лазер',
+            'spreadShot': 'Веерная атака',
+            'rapidFire': 'Скорострельный'
+        };
 
         if (tg.initDataUnsafe?.query_id) {
             tg.ready();
@@ -425,16 +431,9 @@ class Game {
         // Обновление бонусов
         for (let i = this.powerUps.length - 1; i >= 0; i--) {
             const powerUp = this.powerUps[i];
-            if (powerUp instanceof PowerUp) {
-                powerUp.move();
-                if (powerUp.y > this.canvas.height) {
-                    this.powerUps.splice(i, 1);
-                }
-                // Проверка столкновения с игроком
-                if (this.isColliding(this.player, powerUp)) {
-                    this.activateWeapon(powerUp.type, powerUp.duration);
-                    this.powerUps.splice(i, 1);
-                }
+            powerUp.move();
+            if (powerUp.y > this.canvas.height) {
+                this.powerUps.splice(i, 1);
             }
         }
 
@@ -443,6 +442,15 @@ class Game {
 
     checkCollisions() {
         this.player.bullets.forEach((bullet, bulletIndex) => {
+            // Проверка столкновения пуль с бонусами
+            this.powerUps.forEach((powerUp, powerUpIndex) => {
+                if (this.isColliding(bullet, powerUp)) {
+                    this.player.bullets.splice(bulletIndex, 1);
+                    this.activateWeapon(powerUp.type, powerUp.duration);
+                    this.powerUps.splice(powerUpIndex, 1);
+                }
+            });
+
             this.enemies.forEach((enemy, enemyIndex) => {
                 if (this.isColliding(bullet, enemy)) {
                     this.player.bullets.splice(bulletIndex, 1);
@@ -638,7 +646,7 @@ class Game {
             const timeLeft = Math.ceil(this.weaponTimeLeft / 1000);
             this.ctx.fillStyle = '#FFFFFF';
             this.ctx.font = `${scaleCoord(16, false)}px 'Segoe UI'`;
-            this.ctx.fillText(`${this.currentWeapon}: ${timeLeft}s`, 
+            this.ctx.fillText(`${this.weaponNames[this.currentWeapon]}: ${timeLeft} сек`, 
                 scaleCoord(10), scaleCoord(180, false));
         }
     }
@@ -744,6 +752,10 @@ class Game {
         }
         this.currentWeapon = type;
         this.weaponTimeLeft = duration;
+        
+        // Визуальный эффект при активации оружия
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
         this.weaponTimer = setInterval(() => {
             this.weaponTimeLeft -= 100;
