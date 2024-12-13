@@ -34,10 +34,16 @@ def handle_webapp_data(update, context):
         save_score(user_data['username'], user_data['score'], user_data['timestamp'])
         update.message.reply_text(f"Новый рекорд: {user_data['score']} очков!")
         
+    elif data['action'] == 'getLeaderboard':
+        scores = get_top_scores()
+        leaderboard = "🏆 Таблица лидеров:\n\n"
+        for i, (username, score) in enumerate(scores, 1):
+            leaderboard += f"{i}. {username}: {score} очков\n"
+        update.message.reply_text(leaderboard)
+        update.message.reply_text("Нажмите 'Играть заново' чтобы попробовать еще раз!")
+        
     elif data['action'] == 'share':
         update.message.reply_text(data['message'])
-        
-        # Отправляем таблицу лидеров
         scores = get_top_scores()
         leaderboard = "🏆 Таблица лидеров:\n\n"
         for i, (username, score) in enumerate(scores, 1):

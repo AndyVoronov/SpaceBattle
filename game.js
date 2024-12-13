@@ -184,6 +184,7 @@ class Game {
         this.player.x = 400 - this.player.width / 2;
         this.player.y = 500;
         document.getElementById('gameOver').style.display = 'none';
+        document.getElementById('leaderboard').style.display = 'none';
         tg.MainButton.hide();
     }
 
@@ -260,14 +261,24 @@ class Game {
         this.isGameOver = true;
         this.saveHighScore();
         document.getElementById('gameOver').style.display = 'block';
+        this.showLeaderboard();
         tg.MainButton.show();
+        tg.MainButton.setText('Играть заново');
+        tg.MainButton.onClick(() => this.restartGame());
+    }
+
+    showLeaderboard() {
+        const leaderboard = document.getElementById('leaderboard');
+        const leaderboardItems = document.getElementById('leaderboard-items');
+        leaderboardItems.innerHTML = ''; // Очищаем предыдущую таблицу
         
-        if (tg.initDataUnsafe.query_id) {
+        if (tg.initDataUnsafe?.query_id) {
             tg.sendData(JSON.stringify({
-                action: 'gameOver',
-                score: this.score
+                action: 'getLeaderboard'
             }));
         }
+        
+        leaderboard.style.display = 'block';
     }
 
     draw() {
