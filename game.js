@@ -49,16 +49,42 @@ class Enemy {
         this.height = 40;
         this.x = Math.random() * (800 - this.width);
         this.y = -this.height;
+        switch(type) {
+            case 'fast':
+                this.speed = 4;
+                this.points = 200;
+                this.health = 1;
+                break;
+            case 'tank':
+                this.speed = 1;
+                this.points = 300;
+                this.health = 3;
+                break;
+            default: // basic
+                this.speed = 2;
+                this.points = 100;
+                this.health = 1;
+        }
         this.type = type;
-        const stats = game.enemyTypes[type];
-        this.speed = stats.speed;
-        this.health = stats.health;
-        this.points = stats.points;
     }
 
     draw(ctx, color) {
         ctx.fillStyle = color;
-        ctx.fillRect(this.x, this.y, this.width, this.height);
+        if (this.type === 'tank') {
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+            ctx.fillStyle = '#888';
+            ctx.fillRect(this.x + 5, this.y + 5, this.width - 10, this.height - 10);
+        } else if (this.type === 'fast') {
+            ctx.beginPath();
+            ctx.moveTo(this.x + this.width/2, this.y);
+            ctx.lineTo(this.x + this.width, this.y + this.height/2);
+            ctx.lineTo(this.x + this.width/2, this.y + this.height);
+            ctx.lineTo(this.x, this.y + this.height/2);
+            ctx.closePath();
+            ctx.fill();
+        } else {
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
     }
 
     move() {
@@ -82,11 +108,6 @@ class Game {
         this.isGameOver = false;
         this.highScore = this.loadHighScore();
         this.level = 1;
-        this.enemyTypes = {
-            basic: { speed: 2, points: 100, health: 1 },
-            fast: { speed: 4, points: 200, health: 1 },
-            tank: { speed: 1, points: 300, health: 3 }
-        };
         this.powerUps = [];
         this.sounds = {
             shoot: new Audio('sounds/shoot.mp3'),
@@ -306,8 +327,12 @@ class Game {
             this.enemies.forEach((enemy, enemyIndex) => {
                 if (this.isColliding(bullet, enemy)) {
                     this.player.bullets.splice(bulletIndex, 1);
-                    this.enemies.splice(enemyIndex, 1);
-                    this.score += 100;
+                    enemy.health--;
+                    if (enemy.health <= 0) {
+                        this.enemies.splice(enemyIndex, 1);
+                        this.score += enemy.points;
+                        this.level = Math.floor(this.score / 1000) + 1;
+                    }
                 }
             });
         });
